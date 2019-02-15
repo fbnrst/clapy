@@ -1,0 +1,13 @@
+Install with python setup.py install
+
+gsl development package requiert 
+
+Ubuntu:
+apt-get install gsl-bin libgsl0-dev
+
+Ubuntu:
+apt-get install gsl-bin libgsl-dev
+
+Fedora:
+dnf install gsl-devel
+
