@@ -23,6 +23,6 @@ setup (name = 'clapy',
        author = '',
        author_email = '',
        url = '',
-       long_description=read('README'),
+       long_description=read('README.md'),
        ext_modules = [module1],
        )
