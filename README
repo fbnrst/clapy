@@ -1,5 +1,7 @@
 Install with python setup.py install
 
+In the example folder are the script to create the plots from the paper and an simple fit example
+
 gsl development package requiert 
 
 Ubuntu:
