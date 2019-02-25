@@ -1,4 +1,4 @@
-# clapy - Simulating continuous labelling assays
+# clapy - Simulate and analyse continuous labelling assays
 
 
 `clapy` is a python module that allows to simulate continuous labelling assays.
