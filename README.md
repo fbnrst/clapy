@@ -1,33 +1,15 @@
-# clapy - Simulate and analyse continuous labelling assays
+# clapy - Analyse continuous labelling assays
 
 
-`clapy` is a python module that allows to simulate continuous labelling assays.
+`clapy` is a python3 module that allows to analyse continuous labelling assays.
 
-In the example folder are the script to create the plots from the paper and an simple fit example.
-
-
-## Installation
-
-Install by running
-```python
-python setup.py install
-```
 
 ### Requirements
 
-You will need `matplotlib`, `numpy`, `pandas` and `scipy`.
-Furthermore, the you will need the `gsl` development package.
-
-To install `gsl` dependencies run:
-#### Ubuntu:
-```bash
-apt-get install gsl-bin libgsl0-dev
-```
-
-#### Fedora:
-```bash
-dnf install gsl-devel
-```
+You will need  `matplotlib`, `numpy`, `iminuit` and `scipy`. For the basic fitting.
+To recreate our plots you will also need `pandas`, `seaborn`. 
+To have nice plots you need also a working latex render backend for matplotlib.
+If not do not run cell 3 of paper_plots.ipynb.
 
 ## How to cite `clapy`
 
