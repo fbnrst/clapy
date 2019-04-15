@@ -9,7 +9,8 @@ from matplotlib.transforms import Bbox, TransformedBbox, blended_transform_facto
 from mpl_toolkits.axes_grid1.inset_locator import BboxConnector
 import matplotlib.lines as pltlines
 import matplotlib.transforms as plttransformsimport 
-
+import json
+from iminuit import Minuit
 import warnings
 
 
@@ -231,6 +232,51 @@ def cla_det_model(t, G1=0.2, S=0.3, G2M=0.5, GF=1, mode=1, **kwargs):
                 return g
 
 
+def web_fit(times,datas,ncells,opath,name):
+    dat = np.array(datas)
+    tim = np.array(times)
+    ncell = np.array(ncells)
+
+    Tc_init = np.max(tim)*0.5
+    r_init = 0.5
+    GF_init = np.mean(np.sort(dat)[-len(dat)//10:])
+    Tc_lower = np.min(tim)
+    Tc_upper = np.max(tim)
+    error = Tc_init*0.1
+
+    lh = asym_lh(dat,tim,ncell)
+    mi = Minuit(lh.compute, Tc=Tc_init, r=r_init,GF=GF_init,sigma_sample=Tc_init*0.2,sigma_cell=Tc_init*0.2, \
+               error_Tc=error,error_r=0.1,error_GF=0.1,error_sigma_sample=error,error_sigma_cell=error,\
+               limit_Tc=(Tc_lower,Tc_upper), limit_r=(0.00001,1),limit_GF=(0,1),limit_sigma_sample=(0.00001,Tc_init),limit_sigma_cell=(0.00001,Tc_init),\
+               errordef=0.5,print_level=0)
+    mi.migrad();
+
+    fit = dict()
+    for i in  mi.values:
+        fit.update( {i : {'value' : mi.values[i], '2sigma' : 2*mi.errors[i]}})
+
+    fig = plt.figure(1,figsize=(5,4))
+
+
+    tf = np.linspace(0.01,np.max(tim)*1.1,1000)
+    tf2 = np.linspace(0.01,np.max(tim)*1.1,100)
+    d = dist()
+    prob = np.zeros(len(tf2))
+    nc = np.mean(ncell)
+    for t_n,t in enumerate(tf2):
+        prob[t_n] = d.pmf_mean(nc,fit['Tc']['value'],fit['r']['value'],fit['GF']['value'],fit['sigma_cell']['value'],fit['sigma_sample']['value'],t)
+    plt.plot(tim,dat/ncell,'k.',label='Measurements',zorder=4)
+    colorp =  np.array([0.5647058823529412, 0.9333333333333333, 0.5647058823529412]) - np.array([0.4,0.1,0.4])
+    plt.plot(tf2,prob/nc,label='probabilistic model',color=colorp,lw=2,zorder=2)
+    plt.plot(tf,cla_det_model(tf,fit['Tc']['value'],fit['r']['value'],fit['GF']['value']),label='Nowakowski model',color='#CC79A7',zorder=1)
+    plt.ylim(0,1.1)
+    plt.legend()
+    plt.xlabel('time [original units]')
+    plt.ylabel('labeling fraction')
+
+    fig.savefig(opath+"/" + name+'.png')
+    plt.close(fig)
+    return fit
 
 
 def idx_name_levels(df,name):
