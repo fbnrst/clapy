@@ -44,6 +44,17 @@ def ecdf(x):
     return xs, ys
 
 
+
+def log_params( mu, sigma):
+    """ A transformation of paramteres such that mu and sigma are the
+        mean and variance of the log-normal distribution and not of
+        the underlying normal distribution.
+    """
+    s2 = np.log(1.0 + sigma**2/mu**2)
+    m = np.log(mu) - 0.5 * s2
+    s = np.sqrt(s2)
+    return m, s
+
 class asym_lh:
     ''' class with the likelihood for the asymetric cell labelling assays 
         usable for minuit
@@ -190,7 +201,11 @@ class dist:
     def fm(self, TC_):
         return  self.GF*self.logn(self.sigma_cell,TC_,self.r) * self.pdf_LN(TC_, self.Tc, self.sigma_sample)
     
-
+def calc_sigma_true(sigma,fg1,fg2m):
+    a = np.sqrt(-(-1 + 3*fg1 - 3*fg1*fg1 + 3*fg2m - 6*fg1*fg2m - 3*fg2m*fg2m + 3*fg1*fg2m*fg2m))
+    b = np.sqrt(-(-1 + 3*fg1 - 3*fg1*fg1 + 3*fg2m - 6*fg1*fg2m - 3*fg2m*fg2m))
+    return sigma*a/b
+    
 @np.vectorize
 def cla_det_model(t, G1=0.2, S=0.3, G2M=0.5, GF=1, mode=1, **kwargs):
     """ Model for labeling assays in vivo.
