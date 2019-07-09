@@ -3,6 +3,8 @@
 
 `clapy` is a python3 module that allows to analyse continuous labelling assays.
 
+Please decompress the data file 'paper_data.pandas.gz' for the plots first! 
+'gzip -d paper_data.pandas.gz' 
 
 ### Requirements
 
