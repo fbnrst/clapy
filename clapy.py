@@ -226,6 +226,6 @@ def web_fit(times,datas,ncells):
     plt.ylabel('labeling fraction')
 
     image = io.BytesIO()
-    fig.savefig(image,format='png')
+    fig.savefig(image, format='png', bbox_inches='tight')
     plt.close(fig)
     return fit,image.getvalue()
