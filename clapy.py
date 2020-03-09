@@ -40,7 +40,6 @@ def logn(sigma_cell,Tc,r,t):
     return 1-1*idf+r*idf+t*int2
 
 
-
 class asym_lh:
     ''' class with the likelihood for the asymetric cell labelling assays 
         usable for minuit
@@ -118,7 +117,7 @@ class dist:
         return P
 
     def f(self, TC_,x):
-        return inom.pmf(x, self.ncell, self.GF*logn(self.sigma_cell,TC_,self.r,self.t) ) * pdf_LN(TC_, self.Tc, self.sigma_sample)
+        return binom.pmf(x, self.ncell, self.GF*logn(self.sigma_cell,TC_,self.r,self.t) ) * pdf_LN(TC_, self.Tc, self.sigma_sample)
 
     def pmf_mean(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
         """ mean number of labelled cells
@@ -138,6 +137,8 @@ class dist:
 
     def fm(self, TC_):
         return  self.GF*logn(self.sigma_cell,TC_,self.r,self.t) * pdf_LN(TC_, self.Tc, self.sigma_sample)
+
+
 
 def calc_sigma_true(sigma,fg1,fg2m):
     a = np.sqrt(-(-1 + 3*fg1 - 3*fg1*fg1 + 3*fg2m - 6*fg1*fg2m - 3*fg2m*fg2m + 3*fg1*fg2m*fg2m))
@@ -229,3 +230,137 @@ def web_fit(times,datas,ncells):
     fig.savefig(image,format='png')
     plt.close(fig)
     return fit,image.getvalue()
+
+
+
+
+from scipy.stats import gamma as gammad
+from scipy.special import gamma,gammaincc
+
+
+def pdf_Gamma(x,mu,sigma):
+    beta  = sigma*sigma/mu
+    alpha = mu*mu/(sigma*sigma)
+    return gammad.pdf(x, a=alpha, scale=beta) 
+
+
+def loggamma(sigma_cell,Tc,r,t):
+    '''  def logn(t,sigma_cell,Tc,r):
+         analytic solution for cell only noise
+         sigma_cell : $\hat{\sigma}_c$
+         r          : $f_S$
+         t          : time
+    '''
+    alpha = Tc*Tc/(sigma_cell*sigma_cell)
+    beta  = sigma_cell*sigma_cell/Tc
+    ga = gamma(alpha)
+    frac = t/(beta-r*beta)
+    igaf = ga*gammaincc(alpha,frac)
+    
+    f1 = beta*ga - r*beta*ga + t*gamma(-1+alpha)*gammaincc(-1+alpha,frac) - beta*igaf + r*beta*igaf
+    return f1/(beta*ga) + r
+
+
+
+class asym_lhgamma:
+    ''' class with the likelihood for the asymetric cell labelling assays 
+        usable for minuit
+    '''
+
+    def __init__(self,data,times,ncell):
+        ''' data = number of labeld cells
+            times = time for labeling fraction
+            ncell = number of cells 
+        '''
+        self.data = np.round(data)
+        self.datalen = np.size(data)
+        self.times = times
+        if np.size(ncell) !=  self.datalen:
+            self.ncell = np.ones_like(data,dtype=np.int32)*ncell
+        else:
+            self.ncell = ncell
+
+    def compute(self, Tc,r,GF,sigma_cell,sigma_sample):
+        ''' compute log liklyhood for parameters given
+        '''
+        pmf = self.pmf_f(Tc,r,GF,sigma_cell,sigma_sample) 
+        pmf[np.abs(pmf) < 1e-300] = 1e-300 #fix nan in log
+        return np.sum(-np.log( pmf) )
+        #return np.sum(-np.log( self.pmf_f(Tc,r,GF,sigma_cell,sigma_sample) ) )
+
+
+    def pmf_f(self, Tc,r, GF, sigma_cell,sigma_sample):
+        """ pmf for the number of labelled cells
+            to test: using epsabs=0.1 and epsrel=0.1 in quad might significantly
+            speed up the computation without loosing too much precision
+        """
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+
+        #P =[integrate.quadrature(self.f, 0.0001, Tc+(sigma_sample*10),args=([i]),tol=1.48e-08, rtol=1.48e-08)[0] for i in range(self.datalen)]
+        #P = [integrate.fixed_quad(self.f, 0.0001, Tc+(sigma_sample*10),n=100,args=([i]))[0] for i in range(self.datalen)]
+        P = [integrate.fixed_quad(self.f, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200,args=([i]))[0] for i in range(self.datalen)]
+        return np.array(P)
+
+    def f(self, TC_,n):
+        res = binom.pmf(self.data[n], self.ncell[n], self.GF*loggamma(self.sigma_cell,TC_,self.r,self.times[n]) ) * pdf_Gamma(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
+
+class dist_gamma:
+    ''' distribution for the asymetric labelling assay   '''
+
+    def __init__(self):
+        pass
+
+
+    def pmf_f(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t, x):
+        """ pmf for the number of labelled cells
+              ncell      : number of cells counted
+              Tc         : cell cycle length $\tau$
+              r          : $f_S$
+              GF         : growth fraction $g$
+              sigma_cell : $\hat{\sigma}_c$
+              t          : time
+              x          : number of labelled cells
+
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
+
+        #P =  sp.integrate.quadrature(self.f, 0.01, 11,args=([x]))[0] 
+        P = integrate.fixed_quad(self.f, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200,args=([x]))[0]
+        return np.array(P)
+
+    def f(self, TC_,x):
+        res = binom.pmf(x, self.ncell, self.GF*loggamma(self.sigma_cell,TC_,self.r,self.t) ) * pdf_Gamma(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
+
+    def pmf_mean(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
+        """ mean number of labelled cells
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
+
+        #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
+        P = integrate.fixed_quad(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        return ncell*P
+
+
+    def fm(self, TC_):
+        res =  self.GF*loggamma(self.sigma_cell,TC_,self.r,self.t) * pdf_Gamma(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
+
+
