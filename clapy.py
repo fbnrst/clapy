@@ -131,14 +131,57 @@ class dist:
         self.t = t
 
         #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
-        P = integrate.fixed_quad(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        P = integrate.fixed_quad(self.fmean, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
         return ncell*P
 
 
-    def fm(self, TC_):
+    def fmean(self, TC_):
         return  self.GF*logn(self.sigma_cell,TC_,self.r,self.t) * pdf_LN(TC_, self.Tc, self.sigma_sample)
 
+    def pmf_std(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
+        """ mean number of labelled cells
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
 
+        mean = self.pmf_mean(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
+        P = integrate.fixed_quad(self.fstd, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        return np.sqrt(P - mean*mean)
+
+    def fstd(self, TC_):
+        p = self.GF*logn(self.sigma_cell,TC_,self.r,self.t)
+        n = self.ncell
+        res =   (n**2*p**2 - n*p**2 + n*p)* pdf_LN(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
+
+
+    def pmf_skw(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
+        """ mean number of labelled cells
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
+        mean = self.pmf_mean(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        std = self.pmf_std(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
+        P = integrate.fixed_quad(self.fskw, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        return (P - 3*mean*std**2 - mean**3)/std**3
+
+    def fskw(self, TC_):
+        p = self.GF*logn(self.sigma_cell,TC_,self.r,self.t)
+        n = self.ncell
+        res =  (n*p - 3*(1 - n)*n*p**2 + (1 - n)*(2 - n)*n*p**3 ) * pdf_LN(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
 
 def calc_sigma_true(sigma,fg1,fg2m):
     a = np.sqrt(-(-1 + 3*fg1 - 3*fg1*fg1 + 3*fg2m - 6*fg1*fg2m - 3*fg2m*fg2m + 3*fg1*fg2m*fg2m))
@@ -299,7 +342,6 @@ class asym_lhgamma:
         self.GF = GF
         self.sigma_cell = sigma_cell
         self.sigma_sample = sigma_sample
-
         #P =[integrate.quadrature(self.f, 0.0001, Tc+(sigma_sample*10),args=([i]),tol=1.48e-08, rtol=1.48e-08)[0] for i in range(self.datalen)]
         #P = [integrate.fixed_quad(self.f, 0.0001, Tc+(sigma_sample*10),n=100,args=([i]))[0] for i in range(self.datalen)]
         P = [integrate.fixed_quad(self.f, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200,args=([i]))[0] for i in range(self.datalen)]
@@ -355,12 +397,55 @@ class dist_gamma:
         self.t = t
 
         #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
-        P = integrate.fixed_quad(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        P = integrate.fixed_quad(self.fmean, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
         return ncell*P
 
 
-    def fm(self, TC_):
+    def fmean(self, TC_):
         res =  self.GF*loggamma(self.sigma_cell,TC_,self.r,self.t) * pdf_Gamma(TC_, self.Tc, self.sigma_sample)
         return np.nan_to_num(res)
 
 
+    def pmf_std(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
+        """ mean number of labelled cells
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
+
+        mean = self.pmf_mean(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
+        P = integrate.fixed_quad(self.fstd, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        return np.sqrt(P - mean*mean)
+
+    def fstd(self, TC_):
+        p = self.GF*loggamma(self.sigma_cell,TC_,self.r,self.t)
+        n = self.ncell
+        res =   (n**2*p**2 - n*p**2 + n*p)* pdf_Gamma(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
+
+    def pmf_skw(self,ncell,Tc,r, GF, sigma_cell,sigma_sample, t):
+        """ mean number of labelled cells
+        """
+        self.ncell = ncell
+        self.Tc = Tc
+        self.r = r
+        self.GF = GF
+        self.sigma_cell = sigma_cell
+        self.sigma_sample = sigma_sample
+        self.t = t
+        mean = self.pmf_mean(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        std = self.pmf_std(ncell,Tc,r, GF, sigma_cell,sigma_sample, t)
+        #P =  sp.integrate.quadrature(self.fm, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10))[0] 
+        P = integrate.fixed_quad(self.fskw, max(0.0001,Tc-(sigma_sample*5)), Tc+(sigma_sample*10),n=200)[0]
+        return (P - 3*mean*std**2 - mean**3)/std**3
+
+    def fskw(self, TC_):
+        p = self.GF*loggamma(self.sigma_cell,TC_,self.r,self.t)
+        n = self.ncell
+        res =  (n*p - 3*(1 - n)*n*p**2 + (1 - n)*(2 - n)*n*p**3 ) * pdf_Gamma(TC_, self.Tc, self.sigma_sample)
+        return np.nan_to_num(res)
